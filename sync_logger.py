@@ -1,4 +1,3 @@
-#!/usr/bin/env  python2.7
 # -*- coding:utf8 -*-
 
 import os
@@ -6,7 +5,7 @@ import logging
 import datetime
 import traceback
 import inspect
-from mt_file_hanlder import MtTimedFileHandler
+from .mt_file_hanlder import MtTimedFileHandler
 
 
 # log environment
@@ -27,13 +26,14 @@ class LogSev(object):
     trace = (10, "trace")
 
 
-class Logger(object):
+class SyncLogger(object):
     __process = None
     __report = None
     __third = None
     __sep = '\x1E'
     __env = LogEnv.develop
     __third_handler = None
+    __locker = None
 
     class Formatter(logging.Formatter):
         converter = datetime.datetime.fromtimestamp
@@ -48,7 +48,7 @@ class Logger(object):
             return s
 
     @classmethod
-    def init(cls, env, target, file_name, file_size=100 * 1024 * 1024, max_file_count=-1):
+    def start(cls, env, target, file_name, file_size=100 * 1024 * 1024, max_file_count=-1, locker=None):
         """ Initialize logger
 
         :type env: string
@@ -56,6 +56,7 @@ class Logger(object):
         :type file_name: string
         :type file_size: int
         :type max_file_count: int
+        :type locker Locker
         :return: bool
         """
         try:
@@ -82,7 +83,7 @@ class Logger(object):
                 '[%(thread)d]',
                 '%(message)s'
             ]
-            formatter = Logger.Formatter(fmt=cls.__sep.join(argv), datefmt="%Y-%m-%d %H:%M:%S.%f")
+            formatter = SyncLogger.Formatter(fmt=cls.__sep.join(argv), datefmt="%Y-%m-%d %H:%M:%S.%f")
 
             # Process logger to process.log
             process_file = os.path.join(target, file_name + '.process.log')
@@ -115,7 +116,7 @@ class Logger(object):
                 '[keyword]'
                 '[%(message)s]'
             ]
-            third_formatter = Logger.Formatter(fmt=cls.__sep.join(third_argv), datefmt="%Y-%m-%d %H:%M:%S.%f")
+            third_formatter = SyncLogger.Formatter(fmt=cls.__sep.join(third_argv), datefmt="%Y-%m-%d %H:%M:%S.%f")
 
             # Third logger to process.log
             third_file = os.path.join(target, file_name + '.process.log')
@@ -127,10 +128,17 @@ class Logger(object):
             third_logger.addHandler(cls.__third_handler)
             cls.__third = third_logger
 
+            # locker
+            cls.__locker = locker
+
             return True
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
             return False
+
+    @classmethod
+    def stop(cls):
+        pass
 
     @classmethod
     def get_third_handler(cls):
@@ -147,115 +155,136 @@ class Logger(object):
     @classmethod
     def trace(cls, msg, pvid="", keyword="normal"):
         try:
-            caller_frame_record = inspect.stack()[1]
-            frame = caller_frame_record[0]
+            frame = inspect.currentframe().f_back
             info = inspect.getframeinfo(frame)
             file_name = info.filename
             line_number = info.lineno
             function = info.function
             message = cls.json_message(file_name, line_number, function, pvid, keyword, msg)
-            cls.__process.log(LogSev.trace[0], message)
+            if cls.__locker:
+                with cls.__locker:
+                    cls.__process.log(LogSev.trace[0], message)
+            else:
+                cls.__process.log(LogSev.trace[0], message)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
 
     @classmethod
     def debug(cls, msg, pvid="", keyword="normal"):
         try:
-            caller_frame_record = inspect.stack()[1]
-            frame = caller_frame_record[0]
+            frame = inspect.currentframe().f_back
             info = inspect.getframeinfo(frame)
             file_name = info.filename
             line_number = info.lineno
             function = info.function
             message = cls.json_message(file_name, line_number, function, pvid, keyword, msg)
-            cls.__process.log(LogSev.debug[0], message)
+            if cls.__locker:
+                with cls.__locker:
+                    cls.__process.log(LogSev.debug[0], message)
+            else:
+                cls.__process.log(LogSev.debug[0], message)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
 
     @classmethod
     def info(cls, msg, pvid="", keyword="normal"):
         try:
-            caller_frame_record = inspect.stack()[1]
-            frame = caller_frame_record[0]
+            frame = inspect.currentframe().f_back
             info = inspect.getframeinfo(frame)
             file_name = info.filename
             line_number = info.lineno
             function = info.function
             message = cls.json_message(file_name, line_number, function, pvid, keyword, msg)
-            cls.__process.log(LogSev.info[0], message)
+            if cls.__locker:
+                with cls.__locker:
+                    cls.__process.log(LogSev.info[0], message)
+            else:
+                cls.__process.log(LogSev.info[0], message)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
 
     @classmethod
     def warn(cls, msg, pvid="", keyword="normal"):
         try:
-            caller_frame_record = inspect.stack()[1]
-            frame = caller_frame_record[0]
+            frame = inspect.currentframe().f_back
             info = inspect.getframeinfo(frame)
             file_name = info.filename
             line_number = info.lineno
             function = info.function
             message = cls.json_message(file_name, line_number, function, pvid, keyword, msg)
-            cls.__process.log(LogSev.warn[0], message)
+            if cls.__locker:
+                with cls.__locker:
+                    cls.__process.log(LogSev.warn[0], message)
+            else:
+                cls.__process.log(LogSev.warn[0], message)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
 
     @classmethod
     def error(cls, msg, pvid="", keyword="normal"):
         try:
-            caller_frame_record = inspect.stack()[1]
-            frame = caller_frame_record[0]
+            frame = inspect.currentframe().f_back
             info = inspect.getframeinfo(frame)
             file_name = info.filename
             line_number = info.lineno
             function = info.function
             message = cls.json_message(file_name, line_number, function, pvid, keyword, msg)
-            cls.__process.log(LogSev.error[0], message)
+            if cls.__locker:
+                with cls.__locker:
+                    cls.__process.log(LogSev.error[0], message)
+            else:
+                cls.__process.log(LogSev.error[0], message)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
 
     @classmethod
     def fatal(cls, msg, pvid="", keyword="normal"):
         try:
-            caller_frame_record = inspect.stack()[1]
-            frame = caller_frame_record[0]
+            frame = inspect.currentframe().f_back
             info = inspect.getframeinfo(frame)
             file_name = info.filename
             line_number = info.lineno
             function = info.function
             message = cls.json_message(file_name, line_number, function, pvid, keyword, msg)
-            cls.__process.log(LogSev.fatal[0], message)
+            if cls.__locker:
+                with cls.__locker:
+                    cls.__process.log(LogSev.fatal[0], message)
+            else:
+                cls.__process.log(LogSev.fatal[0], message)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
 
     @classmethod
     def report(cls, msg, pvid="", keyword="normal"):
         try:
-            caller_frame_record = inspect.stack()[1]
-            frame = caller_frame_record[0]
+            frame = inspect.currentframe().f_back
             info = inspect.getframeinfo(frame)
             file_name = info.filename
             line_number = info.lineno
             function = info.function
             message = cls.json_message(file_name, line_number, function, pvid, keyword, msg)
-            cls.__report.log(LogSev.report[0], message)
+            if cls.__locker:
+                with cls.__locker:
+                    cls.__report.log(LogSev.report[0], message)
+            else:
+                cls.__report.log(LogSev.report[0], message)
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
 
     @classmethod
     def json_message(cls, file_name, line_number, function, pvid, keyword, msg):
         try:
-            if not isinstance(file_name, (str, unicode)):
+            if not isinstance(file_name, (str,)):
                 file_name = str(file_name)
-            if not isinstance(line_number, (str, unicode)):
+            if not isinstance(line_number, (str,)):
                 line_number = str(line_number)
-            if not isinstance(function, (str, unicode)):
+            if not isinstance(function, (str,)):
                 function = str(function)
-            if not isinstance(pvid, (str, unicode)):
+            if not isinstance(pvid, (str,)):
                 pvid = str(pvid)
-            if not isinstance(keyword, (str, unicode)):
+            if not isinstance(keyword, (str,)):
                 keyword = str(keyword)
-            if not isinstance(msg, (str, unicode)):
+            if not isinstance(msg, (str,)):
                 msg = str(msg)
             message = "[" + file_name + ":" + line_number + ":" + function + "]" + cls.__sep
             message += "[" + cls.__env + "]" + cls.__sep
@@ -264,4 +293,4 @@ class Logger(object):
             message += "[" + msg + "]" + cls.__sep
             return message
         except:
-            print traceback.format_exc()
+            print(traceback.format_exc())
